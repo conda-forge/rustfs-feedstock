@@ -13,14 +13,36 @@ source:
 build:
   number: 0
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
-  skip: win
   script:
     env:
       # No fat LTO: the final binary is large and fat-LTO linking exhausts CI
       # memory (OOM). Upstream's default release profile also omits LTO.
       CARGO_PROFILE_RELEASE_STRIP: symbols
     content:
-      - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path ./rustfs
+      - if: unix
+        then:
+          - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path ./rustfs
+        else:
+          # The env vars below are only correct on Windows, so they are exported
+          # here instead of in `script.env` (which applies to every platform).
+          #
+          # aws-lc-sys' default build path emits x86_64 objects when
+          # cross-compiling win-64 -> win-arm64:
+          #   fatal error LNK1112: module machine type 'x64' conflicts with
+          #   target machine type 'ARM64'
+          # Its CMake builder honours the target architecture instead.
+          - set "AWS_LC_SYS_CMAKE_BUILDER=1"
+          # Link the host zstd rather than zstd-sys' vendored copy, which does
+          # not survive the cross-compile:
+          #   error LNK2019: unresolved external symbol ZSTD_compressStream
+          # `pkg-config` refuses to run for a foreign target unless cross
+          # lookups are opted into. No PKG_CONFIG_SYSROOT_DIR: conda's .pc
+          # files already carry the relocated host prefix, so prepending a
+          # sysroot would break the paths they contain.
+          - set "ZSTD_SYS_USE_PKG_CONFIG=1"
+          - set "PKG_CONFIG_ALLOW_CROSS=1"
+          - set "PKG_CONFIG_PATH=%LIBRARY_PREFIX%\lib\pkgconfig"
+          - cargo auditable install --locked --no-track --bins --root %LIBRARY_PREFIX% --path ./rustfs
       - cargo-bundle-licenses --format yaml --output ./THIRDPARTY.yml
 
 requirements:
@@ -35,6 +57,13 @@ requirements:
     - ninja
     - make
     - libprotobuf
+    - if: win
+      then:
+        - pkg-config
+  host:
+    - if: win
+      then:
+        - zstd
 
 tests:
   - script: rustfs --help

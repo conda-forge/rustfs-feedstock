@@ -35,7 +35,12 @@ build:
           # Link the host zstd rather than zstd-sys' vendored copy, which does
           # not survive the cross-compile:
           #   error LNK2019: unresolved external symbol ZSTD_compressStream
+          # `pkg-config` refuses to run for a foreign target unless cross
+          # lookups are opted into. No PKG_CONFIG_SYSROOT_DIR: conda's .pc
+          # files already carry the relocated host prefix, so prepending a
+          # sysroot would break the paths they contain.
           - set "ZSTD_SYS_USE_PKG_CONFIG=1"
+          - set "PKG_CONFIG_ALLOW_CROSS=1"
           - set "PKG_CONFIG_PATH=%LIBRARY_PREFIX%\lib\pkgconfig"
           - cargo auditable install --locked --no-track --bins --root %LIBRARY_PREFIX% --path ./rustfs
       - cargo-bundle-licenses --format yaml --output ./THIRDPARTY.yml

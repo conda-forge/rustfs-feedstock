@@ -19,12 +19,16 @@ build:
     # rather than to a tested minimum, and conda-forge's `rust` activation
     # packages lag a release behind. The sources build fine on 1.97.1.
     env:
-      # No LTO: upstream's release profile asks for `lto = "thin"` with
-      # `codegen-units = 1`, and since 1.0.0 there are two ~200 MB binaries
-      # (`rustfs` and `rustfs-cli`) whose LTO units cargo links in parallel.
-      # That exhausts the linux-aarch64 runner's memory, and rustc gets
-      # OOM-killed ("rustc was terminated by a deadly signal").
+      # Upstream's release profile asks for `lto = "thin"` with
+      # `codegen-units = 1`. Both are too memory-hungry for the 4-core/16 GB
+      # linux-aarch64 runner, where rustc gets OOM-killed ("rustc was
+      # terminated by a deadly signal") — with thin LTO while linking the two
+      # ~200 MB binaries (`rustfs` and `rustfs-cli`, the latter new in 1.0.0)
+      # in parallel, and with one codegen unit while compiling large crates
+      # such as `rustfs-ecstore`. Drop LTO and use cargo's stock release
+      # `codegen-units`, which splits codegen into smaller units.
       CARGO_PROFILE_RELEASE_LTO: "off"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
       CARGO_PROFILE_RELEASE_STRIP: symbols
     content:
       - if: unix

@@ -19,8 +19,12 @@ build:
     # rather than to a tested minimum, and conda-forge's `rust` activation
     # packages lag a release behind. The sources build fine on 1.97.1.
     env:
-      # No fat LTO: the final binary is large and fat-LTO linking exhausts CI
-      # memory (OOM). Upstream's default release profile also omits LTO.
+      # No LTO: upstream's release profile asks for `lto = "thin"` with
+      # `codegen-units = 1`, and since 1.0.0 there are two ~200 MB binaries
+      # (`rustfs` and `rustfs-cli`) whose LTO units cargo links in parallel.
+      # That exhausts the linux-aarch64 runner's memory, and rustc gets
+      # OOM-killed ("rustc was terminated by a deadly signal").
+      CARGO_PROFILE_RELEASE_LTO: "off"
       CARGO_PROFILE_RELEASE_STRIP: symbols
     content:
       - if: unix

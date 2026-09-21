@@ -1,5 +1,5 @@
 context:
-  version: "1.0.0beta.12"
+  version: "1.0.0"
   tag: ${{ version | replace("beta", "-beta") }}
 
 package:
@@ -8,20 +8,32 @@ package:
 
 source:
   url: https://github.com/rustfs/rustfs/archive/refs/tags/${{ tag }}.tar.gz
-  sha256: a80b8eff2d9234ac6a0a507f41ec3fc4572422d43b38498ef06a95b389391fad
+  sha256: e7d4a9580aa4a48d9df509d8c41eb0521b51e72964d763eaf2f44311e325d708
 
 build:
   number: 0
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
   script:
+    # `--ignore-rust-version`: upstream sets `rust-version` to whatever the
+    # current stable release is (1.97.1 in 1.0.0-beta.12, 1.98.1 in 1.0.0)
+    # rather than to a tested minimum, and conda-forge's `rust` activation
+    # packages lag a release behind. The sources build fine on 1.97.1.
     env:
-      # No fat LTO: the final binary is large and fat-LTO linking exhausts CI
-      # memory (OOM). Upstream's default release profile also omits LTO.
+      # Upstream's release profile asks for `lto = "thin"` with
+      # `codegen-units = 1`. Both are too memory-hungry for the 4-core/16 GB
+      # linux-aarch64 runner, where rustc gets OOM-killed ("rustc was
+      # terminated by a deadly signal") — with thin LTO while linking the two
+      # ~200 MB binaries (`rustfs` and `rustfs-cli`, the latter new in 1.0.0)
+      # in parallel, and with one codegen unit while compiling large crates
+      # such as `rustfs-ecstore`. Drop LTO and use cargo's stock release
+      # `codegen-units`, which splits codegen into smaller units.
+      CARGO_PROFILE_RELEASE_LTO: "off"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
       CARGO_PROFILE_RELEASE_STRIP: symbols
     content:
       - if: unix
         then:
-          - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path ./rustfs
+          - cargo auditable install --locked --no-track --bins --ignore-rust-version --root ${{ PREFIX }} --path ./rustfs
         else:
           # The env vars below are only correct on Windows, so they are exported
           # here instead of in `script.env` (which applies to every platform).
@@ -42,7 +54,7 @@ build:
           - set "ZSTD_SYS_USE_PKG_CONFIG=1"
           - set "PKG_CONFIG_ALLOW_CROSS=1"
           - set "PKG_CONFIG_PATH=%LIBRARY_PREFIX%\lib\pkgconfig"
-          - cargo auditable install --locked --no-track --bins --root %LIBRARY_PREFIX% --path ./rustfs
+          - cargo auditable install --locked --no-track --bins --ignore-rust-version --root %LIBRARY_PREFIX% --path ./rustfs
       - cargo-bundle-licenses --format yaml --output ./THIRDPARTY.yml
 
 requirements:
@@ -66,10 +78,14 @@ requirements:
         - zstd
 
 tests:
-  - script: rustfs --help
+  - script:
+      - rustfs --help
+      - rustfs-cli --help
   - package_contents:
       bin:
         - rustfs
+        # New in 1.0.0.
+        - rustfs-cli
       strict: true
 
 about:

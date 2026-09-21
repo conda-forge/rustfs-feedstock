@@ -14,6 +14,10 @@ build:
   number: 0
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
   script:
+    # `--ignore-rust-version`: upstream sets `rust-version` to whatever the
+    # current stable release is (1.97.1 in 1.0.0-beta.12, 1.98.1 in 1.0.0)
+    # rather than to a tested minimum, and conda-forge's `rust` activation
+    # packages lag a release behind. The sources build fine on 1.97.1.
     env:
       # No fat LTO: the final binary is large and fat-LTO linking exhausts CI
       # memory (OOM). Upstream's default release profile also omits LTO.
@@ -21,7 +25,7 @@ build:
     content:
       - if: unix
         then:
-          - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path ./rustfs
+          - cargo auditable install --locked --no-track --bins --ignore-rust-version --root ${{ PREFIX }} --path ./rustfs
         else:
           # The env vars below are only correct on Windows, so they are exported
           # here instead of in `script.env` (which applies to every platform).
@@ -42,7 +46,7 @@ build:
           - set "ZSTD_SYS_USE_PKG_CONFIG=1"
           - set "PKG_CONFIG_ALLOW_CROSS=1"
           - set "PKG_CONFIG_PATH=%LIBRARY_PREFIX%\lib\pkgconfig"
-          - cargo auditable install --locked --no-track --bins --root %LIBRARY_PREFIX% --path ./rustfs
+          - cargo auditable install --locked --no-track --bins --ignore-rust-version --root %LIBRARY_PREFIX% --path ./rustfs
       - cargo-bundle-licenses --format yaml --output ./THIRDPARTY.yml
 
 requirements:
@@ -66,10 +70,14 @@ requirements:
         - zstd
 
 tests:
-  - script: rustfs --help
+  - script:
+      - rustfs --help
+      - rustfs-cli --help
   - package_contents:
       bin:
         - rustfs
+        # New in 1.0.0.
+        - rustfs-cli
       strict: true
 
 about:

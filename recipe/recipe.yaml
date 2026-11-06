@@ -11,7 +11,7 @@ source:
   sha256: fce3eb14564624ddf5bd769d2489d2fc08779363f8d512952096430463d70f82
 
 build:
-  number: 0
+  number: 1
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
   script:
     # `--ignore-rust-version`: upstream sets `rust-version` to whatever the
@@ -71,7 +71,7 @@ requirements:
     - libprotobuf
     - if: win
       then:
-        - pkg-config
+        - pkgconf
   host:
     - if: win
       then:

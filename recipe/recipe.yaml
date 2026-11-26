@@ -11,7 +11,7 @@ source:
   sha256: 7076cd9df4a065e904ec0560782604e1a044eb20b073dbe36c270a53e81ce169
 
 build:
-  number: 0
+  number: 1
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
   script:
     # `--ignore-rust-version`: upstream sets `rust-version` to whatever the

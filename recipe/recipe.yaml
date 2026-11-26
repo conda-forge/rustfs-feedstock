@@ -1,5 +1,5 @@
 context:
-  version: "1.0.6"
+  version: "1.0.7"
   tag: ${{ version | replace("beta", "-beta") }}
 
 package:
@@ -8,10 +8,10 @@ package:
 
 source:
   url: https://github.com/rustfs/rustfs/archive/refs/tags/${{ tag }}.tar.gz
-  sha256: 7076cd9df4a065e904ec0560782604e1a044eb20b073dbe36c270a53e81ce169
+  sha256: d1ffa465481d7541c10a2c5ea216ce6d69bc2853b36d981104d5595ada888408
 
 build:
-  number: 1
+  number: 0
   # Currently don't ship the web console because `rustfs/static` is empty at build time.
   script:
     # `--ignore-rust-version`: upstream sets `rust-version` to whatever the
